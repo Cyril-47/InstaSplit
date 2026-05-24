@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instagram Seamless Carousel Splitter — Pan, Crop & Slices</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="An elegant, fully client-side tool to slice panoramic or wide landscape images (like 2880x1620) into high-quality, seamless Instagram carousel posts in 4:5 Portrait or 1:1 Square aspect ratios.">
+  <meta name="keywords" content="instagram splitter, seamless carousel, pan crop slice, panoramic slice, split 2880x1620, photo splitter, instagram grid">
+  <meta name="author" content="Antigravity">
+  
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- JSZip for client-side compression (loads via CDN, falls back to sequential download if offline) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMV7M3F09iqUDrffgd/OgrfV5ec2wW06nn4+LhyGDT9y227t6sV2f47eI0eUa0e0D4Xp15N5LhE+T1P3Lh/6lw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+  <!-- PWA Install Banner -->
+  <div class="install-banner" id="install-banner">
+    <div class="install-banner-content">
+      <div class="install-banner-icon">⚡</div>
+      <div class="install-banner-text">
+        <strong>Install InstaSplit</strong>
+        <span>Use it like a native app — works offline, launches from your desktop.</span>
+      </div>
+      <button class="btn install-banner-btn" id="btn-install">Install App</button>
+      <button class="install-banner-dismiss" id="btn-dismiss-install" aria-label="Dismiss">✕</button>
+    </div>
+  </div>
+
+  <div class="app-container">
+    
+    <!-- Sidebar Controls -->
+    <aside class="sidebar">
+      <div class="logo-container">
+        <div class="logo-icon">🔗</div>
+        <div>
+          <h1 class="logo-text">InstaSplit</h1>
+          <p style="font-size: 0.7rem; color: var(--text-muted);">Seamless Carousel Studio</p>
+        </div>
+      </div>
+      
+      <!-- Upload Section -->
+      <div class="control-group">
+        <label class="control-label">1. Upload Image</label>
+        <div class="dropzone" id="drop-zone">
+          <div class="dropzone-icon">📸</div>
+          <div class="dropzone-text">
+            <strong>Choose file</strong>, drag it here, or <strong>paste</strong> from clipboard
+          </div>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">PNG, JPG, or WEBP (Max 25MB)</div>
+          <div class="shortcut-hint"><kbd>Ctrl</kbd>+<kbd>O</kbd> to open &nbsp;·&nbsp; <kbd>Ctrl</kbd>+<kbd>V</kbd> to paste</div>
+          <input type="file" id="file-input" accept="image/*" style="display: none;">
+        </div>
+      </div>
+      
+      <!-- Ratio Selector -->
+      <div class="control-group">
+        <label class="control-label">2. Slice Format</label>
+        <div class="aspect-ratio-selector">
+          <button class="ratio-btn active" id="ratio-portrait" data-ratio="4:5">
+            <span class="label">4:5 Portrait</span>
+            <span class="sub">1080 × 1350 px</span>
+          </button>
+          <button class="ratio-btn" id="ratio-square" data-ratio="1:1">
+            <span class="label">1:1 Square</span>
+            <span class="sub">1080 × 1080 px</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Slide Count -->
+      <div class="control-group">
+        <div class="range-slider-wrapper">
+          <div class="slider-header">
+            <span class="control-label">3. Slide Count</span>
+            <span class="slider-val" id="val-slides">2</span>
+          </div>
+          <input type="range" id="input-slides" min="2" max="10" value="2" step="1">
+        </div>
+      </div>
+
+      <!-- Zoom Slider -->
+      <div class="control-group">
+        <div class="range-slider-wrapper">
+          <div class="slider-header">
+            <span class="control-label">4. Zoom Factor</span>
+            <span class="slider-val" id="val-zoom">1.0x</span>
+          </div>
+          <input type="range" id="input-zoom" min="1.0" max="3.0" value="1.0" step="0.05" disabled>
+        </div>
+      </div>
+
+      <!-- Adjustments / Quick tools -->
+      <div class="control-group" style="flex-direction: row; gap: 0.5rem;">
+        <button class="btn btn-secondary" id="btn-reset" style="flex: 1; padding: 0.6rem 1rem;" disabled>Reset Crop</button>
+        <button class="btn btn-secondary" id="btn-fit" style="flex: 1; padding: 0.6rem 1rem;" disabled>Auto-Fit</button>
+      </div>
+
+      <!-- Export Settings -->
+      <div class="control-group" style="border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+        <label class="control-label">5. Export Quality (JPEG)</label>
+        <div class="range-slider-wrapper">
+          <div class="slider-header" style="font-size: 0.8rem;">
+            <span style="color: var(--text-muted);">Compression Quality</span>
+            <span class="slider-val" id="val-quality" style="color: var(--color-secondary);">90%</span>
+          </div>
+          <input type="range" id="input-quality" min="50" max="100" value="90" step="5">
+        </div>
+      </div>
+
+      <!-- Download Button -->
+      <button class="btn" id="btn-download" disabled>
+        <span>⚡</span> Slice & Download Carousel
+      </button>
+      <div class="shortcut-hint" style="justify-content: center;"><kbd>Ctrl</kbd>+<kbd>S</kbd> to export</div>
+
+      <!-- Educational Info -->
+      <div class="info-card">
+        <h4><span>💡</span> How to Post on Instagram</h4>
+        <ul>
+          <li>Save the images to your camera roll.</li>
+          <li>Tap <strong>+</strong>, choose <strong>Select Multiple</strong>.</li>
+          <li>Select the slices in order (Slide 1, Slide 2...).</li>
+          <li>Do <strong>not</strong> apply filters in Instagram, as it can break the seamless transitions.</li>
+        </ul>
+      </div>
+
+      <!-- Keyboard Shortcuts Card -->
+      <div class="info-card">
+        <h4><span>⌨️</span> Keyboard Shortcuts</h4>
+        <ul style="list-style: none; padding-left: 0;">
+          <li><kbd>Ctrl</kbd>+<kbd>O</kbd>&ensp;Open image</li>
+          <li><kbd>Ctrl</kbd>+<kbd>V</kbd>&ensp;Paste image</li>
+          <li><kbd>Ctrl</kbd>+<kbd>S</kbd>&ensp;Export carousel</li>
+          <li><kbd>Ctrl</kbd>+<kbd>R</kbd>&ensp;Reset crop</li>
+          <li><kbd>Ctrl</kbd>+<kbd>F</kbd>&ensp;Auto-fit</li>
+          <li><kbd>+</kbd> / <kbd>−</kbd>&ensp;Zoom in/out</li>
+          <li><kbd>←</kbd> / <kbd>→</kbd>&ensp;Preview slides</li>
+          <li>Scroll wheel&ensp;Zoom on canvas</li>
+        </ul>
+      </div>
+    </aside>
+    
+    <!-- Main workspace (Cropper + Live Phone Preview) -->
+    <main class="main-content">
+      
+      <!-- Header Banner -->
+      <header class="workspace-header">
+        <div>
+          <h2 class="workspace-title" id="image-name-display">No Image Loaded</h2>
+          <p class="workspace-subtitle" id="canvas-dimensions-display">Upload a wide panoramic image to start editing</p>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">
+          Total Canvas: <span id="total-dimensions" style="font-weight: 600; color: var(--color-primary);">0 × 0 px</span>
+        </div>
+      </header>
+
+      <div class="workspace-body">
+        
+        <!-- Interactive Cropping Area -->
+        <section class="canvas-container" id="canvas-container">
+          
+          <div class="drag-hint" id="drag-hint">
+            <span>👆</span> Drag to pan · Pinch or scroll to zoom
+          </div>
+
+          <!-- Interactive Slicing Frame -->
+          <div class="cropper-wrapper" id="cropper-wrapper" style="display: none;">
+            <img id="source-image-element" class="cropper-image" alt="Workspace Source" draggable="false">
+            <div class="cropper-shroud"></div>
+            <!-- The inner box matching the actual crop aspect ratio -->
+            <div class="split-guides" id="split-guides">
+              <!-- Visual slice guides will be dynamically generated here -->
+            </div>
+          </div>
+          
+          <!-- Empty State Graphic -->
+          <div id="workspace-empty-state" style="text-align: center; max-width: 320px;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🌅</div>
+            <h3 style="margin-bottom: 0.5rem; font-family: var(--font-title);">Canvas Studio is Empty</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">
+              Use the sidebar to upload a wide banner or panoramic photo to begin slicing.
+            </p>
+          </div>
+          
+        </section>
+
+        <!-- Smartphone Live Simulation -->
+        <section class="preview-panel">
+          <h3 style="font-size: 1rem; align-self: flex-start; border-bottom: 2px solid var(--color-primary); padding-bottom: 0.25rem;">
+            📱 Swipe Preview
+          </h3>
+          <p class="instruction-tip">
+            Interactive mockup. Swipe or drag horizontally on the image below to check transitions!
+          </p>
+
+          <div class="phone-mockup">
+            <div class="phone-notch"></div>
+            <div class="phone-header">
+              <span>9:41</span>
+              <span class="instagram-logo-mock">Instagram</span>
+              <span>🔋 📶</span>
+            </div>
+            
+            <div class="phone-content" id="phone-content-container">
+              <!-- Mock IG Account Header -->
+              <div class="ig-post-header">
+                <div class="ig-avatar"></div>
+                <div class="ig-username">your_account</div>
+              </div>
+              
+              <!-- Swipe Viewport -->
+              <div class="carousel-viewport" id="preview-viewport">
+                <div class="carousel-strip" id="preview-strip">
+                  <!-- Carousel Mock Slides populated by JS -->
+                </div>
+              </div>
+
+              <!-- Mock IG Footer & Navigation dots -->
+              <div class="ig-post-footer">
+                <div class="ig-actions">
+                  <span>❤️ 💬 ✈️</span>
+                  <span>🔖</span>
+                </div>
+                <div style="color: #fff; font-weight: 600;">9,874 likes</div>
+                <div><strong>your_account</strong> Seamless slides check! ✨...</div>
+                
+                <div class="carousel-indicators-container">
+                  <div class="ig-dots" id="preview-dots">
+                    <!-- Dots generated by JS -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+            Slide <span id="preview-slide-index" style="color: #fff; font-weight: bold;">1</span> of <span id="preview-total-slides" style="color: #fff; font-weight: bold;">2</span>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Loading / Status Overlay -->
+  <div class="overlay" id="loading-overlay">
+    <div class="modal-content">
+      <div id="modal-loader" class="spinner"></div>
+      <div id="modal-success-check" class="checkmark-circle" style="display: none;">✓</div>
+      <div>
+        <h3 id="modal-title">Processing Slices</h3>
+        <p class="modal-status-text" id="modal-status">Extracting and saving files locally...</p>
+      </div>
+      <button class="btn btn-secondary" id="btn-close-modal" style="display: none; width: 100%;">Close</button>
+    </div>
+  </div>
+
+  <!-- Easter Egg Overlay -->
+  <div class="overlay" id="easter-egg-overlay" style="background: rgba(5, 7, 12, 0.95); z-index: 150;">
+    <div class="modal-content" style="max-width: 500px; border-color: var(--color-secondary); box-shadow: 0 0 40px rgba(236, 72, 153, 0.3); position: relative; overflow: hidden; border-width: 2px;">
+      <canvas id="easter-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></canvas>
+      <div style="position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 1.25rem;">
+        <div style="font-size: 3.5rem; animation: pulse 1.5s infinite;">👑</div>
+        <h2 style="background: linear-gradient(45deg, #818cf8, #ec4899, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.8rem; font-family: var(--font-title); margin-bottom: -0.25rem;">Cyril's Studio Edition</h2>
+        <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.6;">
+          Congratulations! You've unlocked the hidden compartment. This edition of InstaSplit has been specially customized for <strong>Cyril</strong>.
+        </p>
+        <div style="padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; font-size: 0.8rem; font-family: monospace; color: #a78bfa; width: 100%;">
+          ACCESS_CODE: CYRIL_PAN_CROP_SLICE_2026
+        </div>
+        <button class="btn" id="btn-close-easter" style="background: linear-gradient(135deg, var(--color-secondary), #db2777); width: 100%;">
+          Dismiss Secret
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+
+  <!-- Service Worker Registration & Install Prompt -->
+  <script>
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+          console.log('[InstaSplit] Service worker registered:', reg.scope);
+        }).catch((err) => {
+          console.warn('[InstaSplit] SW registration failed:', err);
+        });
+      });
+    }
+
+    // Capture the beforeinstallprompt event for the install banner
+    let deferredInstallPrompt = null;
+    const installBanner = document.getElementById('install-banner');
+    const btnInstall = document.getElementById('btn-install');
+    const btnDismissInstall = document.getElementById('btn-dismiss-install');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      // Show banner only if user hasn't dismissed it before
+      if (!sessionStorage.getItem('instasplit-install-dismissed')) {
+        installBanner.classList.add('show');
+      }
+    });
+
+    btnInstall.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') {
+        installBanner.classList.remove('show');
+      }
+      deferredInstallPrompt = null;
+    });
+
+    btnDismissInstall.addEventListener('click', () => {
+      installBanner.classList.remove('show');
+      sessionStorage.setItem('instasplit-install-dismissed', '1');
+    });
+
+    // Auto-hide banner if the app is already installed (standalone mode)
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      installBanner.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
