@@ -64,15 +64,3 @@
      if file size is not a concern.
    • Do NOT apply Instagram filters after uploading, as
      they can break the seamless transitions between slides.
-
-
-  ─────────────────────────────────────────────────────────
-   EASTER EGG  🥚
-  ─────────────────────────────────────────────────────────
-
-   Click the 🔗 logo icon 5 times to find out...
-
-
-  ─────────────────────────────────────────────────────────
-   Made with ♥ for Cyril
-  ─────────────────────────────────────────────────────────
